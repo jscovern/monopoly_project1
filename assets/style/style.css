@@ -6,3 +6,8 @@ h1 {
 	border: 1px solid black;
 	height: 60px;
 }
+
+.monopolyGroup {
+	height: 15%;
+	border-bottom: 1px solid grey;
+}
