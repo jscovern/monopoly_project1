@@ -5,9 +5,91 @@ h1 {
 .property {
 	border: 1px solid black;
 	height: 60px;
+	text-align: center;
 }
 
 .monopolyGroup {
 	height: 15%;
 	border-bottom: 1px solid grey;
+	padding: 1px;
+}
+
+.Purple {
+	background-color: purple;
+	color: white;
+}
+
+.LightBlue {
+	background-color: lightblue;
+}
+
+.Maroon {
+	background-color: maroon;
+	color: white;
+}
+
+.Orange {
+	background-color: orange;
+}
+
+.Red {
+	background-color: red;
+}
+
+.Yellow {
+	background-color: yellow;
+}
+
+.Green {
+	background-color: green;
+}
+
+.Blue {
+	background-color: blue;
+	color: white;
+}
+
+#P1 {
+	border-radius: 50px;
+	background-color: black;
+	color: yellow;
+	font-weight: 500;
+	font-size: 14px;
+}
+
+#P2 {
+	border-radius: 50px;
+	background-color: red;
+	color: black;
+	font-weight: 500;
+	font-size: 14px;
+}
+
+.monopoly {
+	font-size: 40px;
+	text-align: center;
+}
+
+.cards {
+	border: 2px dashed lightgrey;
+	height: 56px;
+	line-height: 56px;
+	text-align: center;
+	transform: rotate(-25deg);
+}
+
+.dice {
+	border: 2px dashed lightgrey;
+	height: 56px;
+	text-align: center;
+	line-height: 56px;
+	text-decoration: underline;
+	text-decoration-color: red;
+}
+
+#diceTitle {
+	border: 0px;
+	position: relative;
+	top: 21px;
+	text-decoration: none;
 }
