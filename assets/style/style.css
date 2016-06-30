@@ -55,6 +55,7 @@ h1 {
 	color: yellow;
 	font-weight: 500;
 	font-size: 14px;
+	border: 1px solid grey;
 }
 
 #P2 {
@@ -63,6 +64,7 @@ h1 {
 	color: black;
 	font-weight: 500;
 	font-size: 14px;
+	border: 1px solid black;
 }
 
 .monopoly {
@@ -92,4 +94,12 @@ h1 {
 	position: relative;
 	top: 21px;
 	text-decoration: none;
+}
+
+#messageBoard {
+
+}
+
+.hide {
+	display: none;
 }
