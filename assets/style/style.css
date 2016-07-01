@@ -6,6 +6,7 @@ h1 {
 	border: 1px solid black;
 	height: 50px;
 	text-align: center;
+	font-family: 'Gudea', sans-serif, "Helvetica Neue",Helvetica,Arial,sans-serif;
 }
 
 .monopolyGroup {
@@ -70,6 +71,8 @@ h1 {
 .monopoly {
 	font-size: 34px;
 	text-align: center;
+	font-family: 'Oswald', sans-serif;
+	color: lightgrey;
 }
 
 .cards {
@@ -78,6 +81,7 @@ h1 {
 	line-height: 47px;
 	text-align: center;
 	transform: rotate(-25deg);
+	font-family: 'Gudea', sans-serif, "Helvetica Neue",Helvetica,Arial,sans-serif;
 }
 
 .dice {
@@ -87,6 +91,7 @@ h1 {
 	line-height: 47px;
 	text-decoration: underline;
 	text-decoration-color: red;
+	font-family: 'Gudea', sans-serif, "Helvetica Neue",Helvetica,Arial,sans-serif;
 }
 
 #diceTitle {
@@ -94,6 +99,11 @@ h1 {
 	position: relative;
 	top: 21px;
 	text-decoration: none;
+	font-family: 'Gudea', sans-serif, "Helvetica Neue",Helvetica,Arial,sans-serif;
+}
+
+.board {
+
 }
 
 #messageBoard {
@@ -102,10 +112,12 @@ h1 {
 	padding-right: 3px;
 	height: 500px;
 	overflow-y: scroll;
+	margin-left: -15px;
 }
 
 .message {
 	margin-top: 3px;
+	border-top: 1px dashed lightgrey;
 }
 
 .hide {
@@ -123,6 +135,7 @@ h1 {
 
 #nextPlayerTurn {
 	height: 50px;
+	margin-left: -15px;
 }
 
 .lineBreak {
@@ -130,4 +143,16 @@ h1 {
 	margin-top: 3px;
 	margin-bottom: 3px;
 	text-align: center;
+	line-height: 15px;
+}
+
+#outerContainer {
+	margin-left: 10px;
+	margin-top: 10px;	
+	margin-right: 10px;
+}
+
+.yesNoButton {
+	text-align: center;
+	padding-bottom: 6px;
 }

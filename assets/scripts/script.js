@@ -372,7 +372,7 @@ $(document).ready(function(){
 		},
 		addBuyMessage: function(gamePlayObj,currProperty,htmlBoardObj) {
 			$("#messageBoard").append("<div class='message'>"+currProperty.title+" is currently owned by the bank, so you can buy it! It will cost $"+currProperty.price+" Would you like to?</div>");
-			$("#messageBoard").append("<div class='yesNoButton'><button id='yesButton'>Yes</button><button id='noButton'>No</button></div>");
+			$("#messageBoard").append("<div class='yesNoButton'><button id='yesButton' class='btn btn-success'>Yes</button><button id='noButton' class='btn btn-danger'>No</button></div>");
 			htmlBoardObj.scrollToBottomMessages();
 			$("#yesButton").on("click",function(){
 				//check if they have a monopoly now
@@ -484,7 +484,7 @@ $(document).ready(function(){
 			$("#messageBoard").append("<div class='message'>"+gamePlayObj.currPlayerObj.name+"! Dude, you lost! Game Over!</div>");
 		},
 		addPlayerBreak: function() {
-			$("#messageBoard").append("<div class='lineBreak'>----------------</div>");
+			$("#messageBoard").append("<div class='message lineBreak'>----------------</div>");
 		}
 	};
 
@@ -540,7 +540,7 @@ $(document).ready(function(){
 	//Properties
 	var go = new Property(monopGame.incrementPropertyCount(),"Go","","","","");
 	monopBoard.addToBoardArray(go);
-	var mediteranean = new Property(monopGame.incrementPropertyCount(),"Mediter Ave","Purple",60,50,2);
+	var mediteranean = new Property(monopGame.incrementPropertyCount(),"Medit Ave","Purple",60,50,2);
 	monopBoard.addToBoardArray(mediteranean);
 	var commChest1 = new Property(monopGame.incrementPropertyCount(),"Com Chest","","","");
 	monopBoard.addToBoardArray(commChest1);
@@ -548,9 +548,9 @@ $(document).ready(function(){
 	monopBoard.addToBoardArray(baltic);
 	var incTax = new Property(monopGame.incrementPropertyCount(),"Income Tax","Income Tax","","");
 	monopBoard.addToBoardArray(incTax);
-	var reading = new Property(monopGame.incrementPropertyCount(),"Reading RR","Railroad",200,25);
+	var reading = new Property(monopGame.incrementPropertyCount(),"Readng RR","Railroad",200,25);
 	monopBoard.addToBoardArray(reading);
-	var oriental = new Property(monopGame.incrementPropertyCount(),"Oriental Ave","LightBlue",100,50,6);
+	var oriental = new Property(monopGame.incrementPropertyCount(),"Oriental Av","LightBlue",100,50,6);
 	monopBoard.addToBoardArray(oriental);
 	var chance1 = new Property(monopGame.incrementPropertyCount(),"Chance","","","");
 	monopBoard.addToBoardArray(chance1);
@@ -592,7 +592,7 @@ $(document).ready(function(){
 	monopBoard.addToBoardArray(bo);
 	var atlantic = new Property(monopGame.incrementPropertyCount(),"Atlantic Ave","Yellow",260,150,22);
 	monopBoard.addToBoardArray(atlantic);
-	var ventnor = new Property(monopGame.incrementPropertyCount(),"Ventnor Ave","Yellow",260,150,22);
+	var ventnor = new Property(monopGame.incrementPropertyCount(),"Ventnor Av","Yellow",260,150,22);
 	monopBoard.addToBoardArray(ventnor);
 	var waterWorks = new Property(monopGame.incrementPropertyCount(),"Water Work","Utility",150,"","Utility");
 	monopBoard.addToBoardArray(waterWorks);
