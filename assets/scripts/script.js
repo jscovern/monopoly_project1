@@ -17,6 +17,7 @@ $(document).ready(function(){
 		this.currBoardPosition = 1;
 		this.prevBoardPosition = 1;
 		this.propertiesArray = [];
+		this.hasRolled = false;
 	}
 
 	Player.prototype = {
@@ -49,7 +50,12 @@ $(document).ready(function(){
 		},
 		calcPlayerPosition: function(diceObj,gamePlayObj) {
 			var totalRoll = diceObj.die1Value + diceObj.die2Value;
-			var newPosition = (this.currBoardPosition + totalRoll) % gamePlayObj.propertyCount;
+			var newPosition;
+			if (this.currBoardPosition + totalRoll === gamePlayObj.propertyCount) {
+				newPosition = this.currBoardPosition + totalRoll;
+			} else {
+				newPosition = (this.currBoardPosition + totalRoll) % gamePlayObj.propertyCount;				
+			}
 			this.prevBoardPosition = this.currBoardPosition;
 			this.currBoardPosition = newPosition;
 			return newPosition;
@@ -73,6 +79,26 @@ $(document).ready(function(){
 			}
 			this.money -= incomeTaxObj.amount;
 			return incomeTaxObj;
+		},
+		earnFromBank: function(amount) {
+			this.money += amount;
+		},
+		payToBank: function(amount) {
+			this.money -= amount;
+		},
+		startTurn: function(htmlBoardObj,gamePlayObj) {
+
+			$(".dice").on("click",function() {
+				gamePlayObj.makeMove(htmlBoardObj);
+			});
+			htmlBoardObj.nextPlayerMessage(gamePlayObj);
+		},
+		checkForBankruptcy: function(htmlBoardObj) {
+			if(this.money < 0) {
+				htmlBoardObj.addBankruptcyMessage();
+				$("#nextPlayerTurn").off("click");
+				$(".dice").off("click");
+			}
 		},
 	};
 
@@ -135,6 +161,8 @@ $(document).ready(function(){
 		this.propertyCount = 0;
 		this.currPlayerObj = {};
 		this.otherPlayerObj = {};
+		this.communityChestArray = [];
+		this.communityChestArrayCounter = 0;
 	}
 
 	GamePlay.prototype = {
@@ -155,7 +183,7 @@ $(document).ready(function(){
 			};
 			return diceObj;
 		},
-		toggleCurrPlayerObj: function() {
+		toggleCurrPlayerObj: function(htmlBoardObj) {
 			if(this.currPlayerObj.playerID === undefined || this.currPlayerObj.playerID === 2) {
 				this.currPlayerObj = player1;
 				this.otherPlayerObj = player2;
@@ -163,17 +191,40 @@ $(document).ready(function(){
 				this.currPlayerObj = player2;
 				this.otherPlayerObj = player1;
 			}
+			this.currPlayerObj.hasRolled = false;
+			this.currPlayerObj.startTurn(htmlBoardObj,this);
 		},
 		makeMove: function(htmlBoardObj) {
+			$(".dice").off("click");
+			this.currPlayerObj.hasRolled = true;
 			var currPlayerObj = this.currPlayerObj;
+			if(currPlayerObj.inJail) {
+				if(currPlayerObj.getOutOfJailFreeCount > 0) {
+					currPlayerObj.getOutOfJailFree("use");
+					htmlBoardObj.sprungJailMessage("card",this);
+					this.currPlayerObj.getOutOfJailFreeCount -= 1;
+					this.currPlayerObj.inJail = false;
+				} else if(currPlayerObj.money >= 50) {
+					currPlayerObj.payToBank(50);
+					htmlBoardObj.sprungJailMessage("paid",this);
+					this.currPlayerObj.inJail = false;
+				} else {
+					htmlBoardObj.stuckInJailMessage(this);
+					return;
+				}
+			}
 			var diceObj = htmlBoardObj.updateHTMLDice(this);
-			console.log(currPlayerObj.playerID);
 			var newPosition = currPlayerObj.calcPlayerPosition(diceObj,this);
 			htmlBoardObj.drawPlayerMarker(currPlayerObj,newPosition);
+			htmlBoardObj.addMoveMessage(this);
 			var currProperty = this.landOnProperty(htmlBoardObj);
 			this.gamePlayOnThisProperty(currProperty,htmlBoardObj);
-			htmlBoardObj.addMoveMessage(this);
-			//this.toggleCurrPlayerObj();
+		},
+		forceMove: function(htmlBoardObj, newPosition) {
+			var currPlayerObj = this.currPlayerObj;
+			htmlBoardObj.drawPlayerMarker(currPlayerObj,newPosition);
+			this.currPlayerObj.prevBoardPosition = this.currPlayerObj.currBoardPosition;
+			this.currPlayerObj.currBoardPosition = newPosition;
 		},
 		landOnProperty: function(htmlBoardObj) {
 			var currPlayer = this.currPlayerObj;
@@ -182,27 +233,21 @@ $(document).ready(function(){
 			return currProperty;
 		},
 		gamePlayOnThisProperty: function(property,htmlBoardObj) {
-			console.log("prop owned by id: "+property.ownedBy.playerID);
-			console.log("this currplayer obj id: "+this.currPlayerObj.playerID);
-			console.log("property curr rent" + property.currentRent);
-			console.log("currplayer obj money "+this.currPlayerObj.money);
-			console.log("base rent "+property.baseRent);
-			if(property.ownedBy==="" && typeof property.price ==="number" && property.price>0 && property.price <= this.currPlayerObj.money) {
+			if (property.title==="Go") {
+				this.currPlayerObj.earnFromBank(200);
+				htmlBoardObj.addLandOnGoMessage(this);
+			} else if(property.ownedBy==="" && typeof property.price ==="number" && property.price>0 && property.price <= this.currPlayerObj.money) {
 				//unowned property, and curr player has enough money to buy it
 				htmlBoardObj.addBuyMessage(this,property,htmlBoardObj);
-				console.log("in the if");
 			} else if (property.ownedBy==="" && typeof property.price ==="number" && property.price>0 && property.price > this.currPlayerObj.money) {
 				//unowned property, and curr player doesn't have enough money to buy it
 				htmlBoardObj.addInsufficientFundsMessage(this,property);
-				console.log("in the first else-if");
 			} else if (property.ownedBy.playerID !== this.currPlayerObj.playerID && property.currentRent <= this.currPlayerObj.money && property.monopolyGroup!=="Utility") {
 				//property owned by other player, you have enough money to pay rent
 				htmlBoardObj.addPayRentMessage(this, property);
-				console.log("thin the second else-if");
 			} else if (property.ownedBy.playerID !== this.currPlayerObj.playerID && property.currentRent > this.currPlayerObj.money && property.monopolyGroup!=="Utility") {
 				//property owned by other player, you don't have enough money to pay rent
 				htmlBoardObj.addLoserMessage(this, property);
-				console.log("in the third else-if");
 			} else if (property.ownedBy.playerID !== this.currPlayerObj.playerID && property.monopolyGroup==="Utility") {
 				//property is a utility, and is owned by the other player
 				var rent = property.calcUtilityRent(this.otherPlayerObj.utilityCount,this.rollDice().die1Value + this.rollDice().die2Value);
@@ -217,7 +262,63 @@ $(document).ready(function(){
 			} else if (property.monopolyGroup === "Income Tax") {
 				var utilityObj = this.currPlayerObj.payIncomeTax();
 				htmlBoardObj.incomeTaxMessage(utilityObj,this);
+			} else if (property.title === "Com Chest") {
+				this.commChestHandler(this.communityChestArray[this.communityChestArrayCounter],htmlBoardObj);
+			} else if (property.title==="Go To Jail") {
+				this.currPlayerObj.inJail = true;
+				this.forceMove(htmlBoardObj,11);
+				htmlBoardObj.goToJailMessage("");
+			} else if (property.title==="Chance") {
+				htmlBoardObj.chanceMessage(this);
+				this.commChestHandler(this.communityChestArray[this.communityChestArrayCounter],htmlBoardObj);
+			} else {
+				htmlBoardObj.nothingHappensMessage(this);
 			}
+		},
+		incrementCommChestCounter: function() {
+			if(this.communityChestArrayCounter === this.communityChestArray.length - 1) {
+				this.communityChestArrayCounter = 0;
+			} else {
+				this.communityChestArrayCounter+=1;
+			}
+		},
+		commChestHandler: function(commChestObj,htmlBoardObj) {
+			htmlBoardObj.commChestInstructionsMessage(commChestObj);
+			if(commChestObj.move) {
+				htmlBoardObj.commChestMoveMessage(commChestObj);
+				this.forceMove(htmlBoardObj,commChestObj.moveToPropNum);
+			}
+			if(commChestObj.getOutOfJailFreeFlag) {
+				this.currPlayerObj.getOutOfJailFree("add");
+				htmlBoardObj.commChestGetOutJailFreeMessage(commChestObj,this.currPlayerObj.getOutOfJailFreeCount);
+			}
+			if(commChestObj.goToJailFlag) {
+				this.currPlayerObj.inJail = true;
+				htmlBoardObj.goToJailMessage(commChestObj);
+			}
+			if(commChestObj.earnOrPay==="earn") {
+				this.currPlayerObj.earnFromBank(commChestObj.amount);
+				htmlBoardObj.commChestEarnMessage(commChestObj,this);
+			} else if (commChestObj.earnOrPay === "pay") {
+				this.currPlayerObj.payToBank(commChestObj.amount);
+				htmlBoardObj.commChestPayMessage(commChestObj,this);
+			}
+			this.incrementCommChestCounter();
+		},
+		startGame: function(htmlBoardObj,currPlayer) {
+			htmlBoardObj.createHTMLBoard(player1,player2);
+			this.currPlayerObj = currPlayer;
+			var myGamePlayObj = this;
+			currPlayer.startTurn(htmlBoardObj,this);
+			$("#nextPlayerTurn").on("click",function(){
+				if(myGamePlayObj.currPlayerObj.hasRolled === false) {
+					htmlBoardObj.didntRollMessage(myGamePlayObj);
+				} else {
+					myGamePlayObj.currPlayerObj.checkForBankruptcy(htmlBoardObj);
+					htmlBoardObj.addPlayerBreak();
+					myGamePlayObj.toggleCurrPlayerObj(htmlBoardObj);
+				}
+			});
 		},
 	};
 
@@ -257,50 +358,134 @@ $(document).ready(function(){
 			$("#dice2").text(diceObj.die2Value);
 			$("#dice1").css("transform","Rotate("+diceObj.die1Rotation+"deg)");
 			$("#dice2").css("transform","Rotate("+diceObj.die2Rotation+"deg)");
+			var rollAmt = diceObj.die1Value + diceObj.die2Value;
+			$("#messageBoard").append("<div class='message'>"+gamePlayObj.currPlayerObj.name+" you rolled a "+diceObj.die1Value+" and a "+diceObj.die2Value+" for a total of "+rollAmt+"</div>");
+			this.scrollToBottomMessages();
 			return diceObj;
 		},
 		addMoveMessage: function(gamePlayObj) {
 			$("#messageBoard").append("<div class='message'>"+gamePlayObj.currPlayerObj.name+", you have landed on "+gamePlayObj.landOnProperty(this).title+"</div>");
+			this.scrollToBottomMessages();
 		},
 		addOwnerStyling: function(property,gamePlayObj,htmlBoardObj) {
-			$("#prop"+property.propNum).css("background-color",gamePlayObj.currPlayerObj.background_color);
+			$("#prop"+property.propertyID+" .players").css("background-color",gamePlayObj.currPlayerObj.background_color);
 		},
 		addBuyMessage: function(gamePlayObj,currProperty,htmlBoardObj) {
 			$("#messageBoard").append("<div class='message'>"+currProperty.title+" is currently owned by the bank, so you can buy it! It will cost $"+currProperty.price+" Would you like to?</div>");
 			$("#messageBoard").append("<div class='yesNoButton'><button id='yesButton'>Yes</button><button id='noButton'>No</button></div>");
+			htmlBoardObj.scrollToBottomMessages();
 			$("#yesButton").on("click",function(){
-				$(".yesNoButton").addClass("hide");
 				//check if they have a monopoly now
 				gamePlayObj.currPlayerObj.buyProperty(currProperty);
 				currProperty.addOwner(gamePlayObj.currPlayerObj);
-				htmlBoardObj.addOwnerStyling(currProperty,gamePlayObj);
-				$("#messageBoard").append("<div class='message'>"+gamePlayObj.currPlayerObj.name+", congratulations! You have just bought "+currProperty.title+" for $"+currProperty.price+". You now own "+gamePlayObj.currPlayerObj.propertyCount+" properties.</div>");
+				htmlBoardObj.addOwnerStyling(currProperty,gamePlayObj,this);
+				$("#messageBoard").append("<div class='message'>"+gamePlayObj.currPlayerObj.name+", congratulations! You have just bought "+currProperty.title+" for $"+currProperty.price+". You now own "+gamePlayObj.currPlayerObj.propertyCount+" properties. You have $"+gamePlayObj.currPlayerObj.money+" left</div>");
+				$(".yesNoButton").remove();
+				htmlBoardObj.scrollToBottomMessages();
+			});
+			$("#noButton").on("click",function(){
+				$('#messageBoard').append("<div class='message'>"+gamePlayObj.currPlayerObj.name+", you chose not to buy the property. Questionable.</div>");
+				$(".yesNoButton").remove();
+				htmlBoardObj.scrollToBottomMessages();
 			});
 		},
 		addInsufficientFundsMessage: function(gamePlayObj,currProperty) {
 			$("#messageBoard").append("<div class='message'>"+currProperty.title+" is currently owned by the bank, but you do not have enough money to buy it.  It costs $"+currProperty.price+" and you only have $"+gamePlayObj.currPlayerObj.money+"</div>");
+			this.scrollToBottomMessages();
 		},
 		addPayRentMessage: function(gamePlayObj,currProperty) {
 			gamePlayObj.currPlayerObj.payRent(currProperty.currentRent,gamePlayObj);
 			$("#messageBoard").append("<div class='message'>"+currProperty.title+" is currently owned by "+currProperty.ownedBy.name+", you must pay them rent of $"+currProperty.currentRent+" since the property has "+currProperty.houseCount+" houses on it. You now have $"+gamePlayObj.currPlayerObj.money+" left, and "+gamePlayObj.otherPlayerObj.name+" has $"+gamePlayObj.otherPlayerObj.money+"</div>");
+			this.scrollToBottomMessages();
 		},
 		addLoserMessage: function(gamePlayObj,currProperty) {
 			$("#messageBoard").append("<div class='message'>"+currProperty.title+" is currently owned by "+currProperty.ownedBy.name+", and you don't have the $"+currProperty.currentRent+" for rent! You only have $"+gamePlayObj.currPlayerObj.money+" left.  Therefore, you lose!</div>");
+			this.scrollToBottomMessages();
 		},
 		addPayUtilityMessage: function(gamePlayObj,currProperty,rent) {
 			gamePlayObj.currPlayerObj.payRent(rent,gamePlayObj);
 			$("#messageBoard").append("<div class='message'>"+currProperty.title+" is currently owned by "+currProperty.ownedBy.name+", since it's a utility and they own "+gamePlayObj.otherPlayerObj.utilityCount+" utilities, you owe them rent of $"+rent+". You now have $"+gamePlayObj.currPlayerObj.money+" left, and "+gamePlayObj.otherPlayerObj.name+" has $"+gamePlayObj.otherPlayerObj.money+"</div>");
+			this.scrollToBottomMessages();
 		},
 		addCantPayUtilityMessage: function(gamePlayObj,currProperty,rent) {
 			$("#messageBoard").append("<div class='message'>"+currProperty.title+" is currently owned by "+currProperty.ownedBy.name+", since it's a utility and they own "+gamePlayObj.otherPlayerObj.utilityCount+" utilities, you owe them rent of $"+rent+".  You only have $"+gamePlayObj.currPlayerObj.money+" left.  Therefore, you lose!</div>");			
+			this.scrollToBottomMessages();
 		},
 		youAlreadyOwnThis: function() {
 			$("#messageBoard").append("<div class='message'>You already own this!  Let's move the game along!</div>");						
+			this.scrollToBottomMessages();
 		},
 		incomeTaxMessage: function(incomeTaxObj, gamePlayObj) {
 			$("#messageBoard").append("<div class='message'>You landed on Income Tax, and thus owe the Bank.  The cheapest option for you was the "+incomeTaxObj.option+", for $"+incomeTaxObj.amount+". You have $"+gamePlayObj.currPlayerObj.money+" left.</div>");
+			this.scrollToBottomMessages();
 		},
-
+		commChestInstructionsMessage: function(commChestObj) {
+			$("#messageBoard").append("<div class='message'>Your community chest card states: "+commChestObj.instructions+"</div>");
+			this.scrollToBottomMessages();
+		},
+		commChestMoveMessage: function(commChestObj) {
+			$("#messageBoard").append("<div class='message'>Based on this card, you are moving to "+this.propertiesArray[commChestObj.moveToPropNum - 1].title+"</div>");
+			this.scrollToBottomMessages();
+		},
+		commChestGetOutJailFreeMessage: function(commChestObj,getOutOfJailFreeCount) {
+			$("#messageBoard").append("<div class='message'>Congratulations, you got a Get Out of Jail Free Card! You now have "+getOutOfJailFreeCount+" of them to use</div>");
+			this.scrollToBottomMessages();
+		},
+		goToJailMessage: function(commChestObj) {
+			$("#messageBoard").append("<div class='message'>Sorry buddy, you're in jail now!</div>");
+			this.scrollToBottomMessages();
+		},
+		commChestEarnMessage(commChestObj,gamePlayObj) {
+			$("#messageBoard").append("<div class='message'> "+gamePlayObj.currPlayerObj.name+" You've earned $"+commChestObj.amount+" from the bank for this community chest card. You now have $"+gamePlayObj.currPlayerObj.money+"</div>");
+			this.scrollToBottomMessages();
+		},
+		commChestPayMessage(commChestObj,gamePlayObj) {
+			$("#messageBoard").append("<div class='message'> "+gamePlayObj.currPlayerObj.name+" You've paid the bank $"+commChestObj.amount+" for this community chest card. You now have $"+gamePlayObj.currPlayerObj.money+"</div>");
+			this.scrollToBottomMessages();
+		},
+		sprungJailMessage(type,gamePlayObj) {
+			if(type==="card"){
+				var str = "using a get out of jail free card";
+			} else {
+				var str = "paying $50";
+			}
+			$("#messageBoard").append("<div class='message'>"+gamePlayObj.currPlayerObj.name+" you have sprung jail!  You did it by "+str+". You have $"+gamePlayObj.currPlayerObj.money+" left</div>");
+			this.scrollToBottomMessages();
+		},
+		stuckInJailMessage: function(gamePlayObj) {
+			$("#messageBoard").append("<div class='message'>"+gamePlayObj.currPlayerObj.name+" you are stuck in jail, because you don't have the $50! You currently have $"+gamePlayObj.currPlayerObj.money+"</div>");
+			this.scrollToBottomMessages();
+		},
+		chanceMessage: function(gamePlayObj) {
+			$("#messageBoard").append("<div class='message'>"+gamePlayObj.currPlayerObj.name+", sorry! I don't have any chance logic yet, so, here's a community chest card instead</div>");
+			this.scrollToBottomMessages();
+		},
+		nothingHappensMessage: function(gamePlayObj) {
+			$("#messageBoard").append("<div class='message'>"+gamePlayObj.currPlayerObj.name+": I don't think anything happens on this type of property.  That is all.</civ>");
+			this.scrollToBottomMessages();
+		},
+		nextPlayerMessage: function(gamePlayObj) {
+			$("#messageBoard").append("<div class='message'>"+gamePlayObj.currPlayerObj.name+": You're Up! Click the die to roll!</div>");
+			$(".yesNoButton").remove();
+			this.scrollToBottomMessages();
+		},
+		addLandOnGoMessage: function(gamePlayObj) {
+			$("#messageBoard").append("<div class='message'>"+gamePlayObj.currPlayerObj.name+" you landed on Go!  How does $200 sound? You now have $"+gamePlayObj.currPlayerObj.money+"</div>");
+			this.scrollToBottomMessages();
+		},
+		scrollToBottomMessages: function() {
+			document.getElementById("messageBoard").scrollTop = document.getElementById("messageBoard").scrollHeight+200;
+		},
+		didntRollMessage: function(gamePlayObj) {
+			$("#messageBoard").append("<div class='message'>"+gamePlayObj.currPlayerObj.name+"! Ummmm, you didn't roll.  Go first, then switch players!</div>");
+			this.scrollToBottomMessages();
+		},
+		addBankruptcyMessage: function() {
+			$("#messageBoard").append("<div class='message'>"+gamePlayObj.currPlayerObj.name+"! Dude, you lost! Game Over!</div>");
+		},
+		addPlayerBreak: function() {
+			$("#messageBoard").append("<div class='lineBreak'>----------------</div>");
+		}
 	};
 
 	function CommunityChest(instructions, amount, earnOrPay, move, moveToPropNum, getOutOfJailFreeFlag, goToJailFlag) {
@@ -311,27 +496,33 @@ $(document).ready(function(){
 		this.moveToPropNum = moveToPropNum;
 		this.getOutOfJailFreeFlag = getOutOfJailFreeFlag;
 		this.goToJailFlag = goToJailFlag;
+		this.numForOrder = Math.random()*Math.random();
 	}
 
-	var commChest1 = new CommunityChest("XMAS Fund Matures. Collect $100",100,"earn",false,"",false);
-	var commChest2 = new CommunityChest("You inherit $100",100,"earn",false,"",false);
-	var commChest3 = new CommunityChest("From sale of stock you get $45",45,"earn",false,"",false);
-	var commChest4 = new CommunityChest("Bank error in your favor, collect $200",200,"earn",false,"",false);
-	var commChest5 = new CommunityChest("Pay hospital $100",100,"pay",false,"",false);
-	var commChest6 = new CommunityChest("Doctors fee, pay $50",50,"pay",false,"",false);
-	var commChest7 = new CommunityChest("Get out of Jail Free","","","","",true);
-	var commChest8 = new CommunityChest("Receive for services, $25",25,"earn",false,"",false);
-	var commChest9 = new CommunityChest("Pay school tax of $150",150,"earn",false,"",false);
-	var commChest10 = new CommunityChest("Advance to go (collect $200",200,"earn",true,1,false);
-	var commChest11 = new CommunityChest("You have won 2nd prize in a beauty contest, collect $10",10,"earn",false,"",false);
-	var commChest12 = new CommunityChest("Collect $50 from the bank",50,"earn",false,"",false);
-	var commChest13 = new CommunityChest("Income Tax refund, collect $20",20,"earn",false,"",false);
-	var commChest14 = new CommunityChest("Life Insurance Matures, collect $100",100,"earn",false,"",false);
-	var commChest15 = new CommunityChest("Go to jail. Go directly to jail. Do not pass go.","","",true,11,false,true);
+	CommunityChest.prototype = {
+
+	};
 
 
 		//GamePlay
 	var monopGame = new GamePlay();
+	//communityChest
+	monopGame.communityChestArray.push(new CommunityChest("XMAS Fund Matures. Collect $100",100,"earn",false,"",false));
+	monopGame.communityChestArray.push(new CommunityChest("You inherit $100",100,"earn",false,"",false));
+	monopGame.communityChestArray.push(new CommunityChest("From sale of stock you get $45",45,"earn",false,"",false));
+	monopGame.communityChestArray.push(new CommunityChest("Bank error in your favor, collect $200",200,"earn",false,"",false));
+	monopGame.communityChestArray.push(new CommunityChest("Pay hospital $100",100,"pay",false,"",false));
+	monopGame.communityChestArray.push(new CommunityChest("Doctors fee, pay $50",50,"pay",false,"",false));
+	monopGame.communityChestArray.push(new CommunityChest("Get out of Jail Free","","","","",true));
+	monopGame.communityChestArray.push(new CommunityChest("Receive for services, $25",25,"earn",false,"",false));
+	monopGame.communityChestArray.push(new CommunityChest("Pay school tax of $150",150,"earn",false,"",false));
+	monopGame.communityChestArray.push(new CommunityChest("Advance to go (collect $200)",200,"earn",true,1,false));
+	monopGame.communityChestArray.push(new CommunityChest("You have won 2nd prize in a beauty contest, collect $10",10,"earn",false,"",false));
+	monopGame.communityChestArray.push(new CommunityChest("Collect $50 from the bank",50,"earn",false,"",false));
+	monopGame.communityChestArray.push(new CommunityChest("Income Tax refund, collect $20",20,"earn",false,"",false));
+	monopGame.communityChestArray.push(new CommunityChest("Life Insurance Matures, collect $100",100,"earn",false,"",false));
+	monopGame.communityChestArray.push(new CommunityChest("Go to jail. Go directly to jail. Do not pass go.","","",true,11,false,true));
+
 	//players
 	var player1 = new Player(monopGame.incrementPlayerID(),"black","yellow");
 	var player2 = new Player(monopGame.incrementPlayerID(),"red","black");
@@ -349,9 +540,9 @@ $(document).ready(function(){
 	//Properties
 	var go = new Property(monopGame.incrementPropertyCount(),"Go","","","","");
 	monopBoard.addToBoardArray(go);
-	var mediteranean = new Property(monopGame.incrementPropertyCount(),"Mediteran Ave","Purple",60,50,2);
+	var mediteranean = new Property(monopGame.incrementPropertyCount(),"Mediter Ave","Purple",60,50,2);
 	monopBoard.addToBoardArray(mediteranean);
-	var commChest1 = new Property(monopGame.incrementPropertyCount(),"Comm Chest","","","");
+	var commChest1 = new Property(monopGame.incrementPropertyCount(),"Com Chest","","","");
 	monopBoard.addToBoardArray(commChest1);
 	var baltic = new Property(monopGame.incrementPropertyCount(),"Baltic Ave","Purple",80,50,4);
 	monopBoard.addToBoardArray(baltic);
@@ -363,7 +554,7 @@ $(document).ready(function(){
 	monopBoard.addToBoardArray(oriental);
 	var chance1 = new Property(monopGame.incrementPropertyCount(),"Chance","","","");
 	monopBoard.addToBoardArray(chance1);
-	var vermont = new Property(monopGame.incrementPropertyCount(),"Vermont Ave","LightBlue",100,50,6);
+	var vermont = new Property(monopGame.incrementPropertyCount(),"Vt Ave","LightBlue",100,50,6);
 	monopBoard.addToBoardArray(vermont);
 	var connecticut = new Property(monopGame.incrementPropertyCount(),"Conn. Ave","LightBlue",120,50,8);
 	monopBoard.addToBoardArray(connecticut);
@@ -379,17 +570,17 @@ $(document).ready(function(){
 	monopBoard.addToBoardArray(virginia);
 	var pennsylvaniaRR = new Property(monopGame.incrementPropertyCount(),"Penn. RR","Railroad",200,25);
 	monopBoard.addToBoardArray(pennsylvaniaRR);
-	var stJames = new Property(monopGame.incrementPropertyCount(),"St James Pl","Orange",120,100,14);
+	var stJames = new Property(monopGame.incrementPropertyCount(),"St James","Orange",120,100,14);
 	monopBoard.addToBoardArray(stJames);
-	var commChest2 = new Property(monopGame.incrementPropertyCount(),"Comm Chest","","","");
+	var commChest2 = new Property(monopGame.incrementPropertyCount(),"Com Chest","","","");
 	monopBoard.addToBoardArray(commChest2);
-	var tennessee = new Property(monopGame.incrementPropertyCount(),"Tennessee Ave","Orange",120,100,14);
+	var tennessee = new Property(monopGame.incrementPropertyCount(),"TN Ave","Orange",120,100,14);
 	monopBoard.addToBoardArray(tennessee);
-	var ny = new Property(monopGame.incrementPropertyCount(),"New York Ave","Orange",120,100,16);
+	var ny = new Property(monopGame.incrementPropertyCount(),"NY Ave","Orange",120,100,16);
 	monopBoard.addToBoardArray(ny);
-	var freeParking = new Property(monopGame.incrementPropertyCount(),"Free Parking","","","");
+	var freeParking = new Property(monopGame.incrementPropertyCount(),"Free Park","","","");
 	monopBoard.addToBoardArray(freeParking);
-	var kentucky = new Property(monopGame.incrementPropertyCount(),"Kentucky Ave","Red",120,150,18);
+	var kentucky = new Property(monopGame.incrementPropertyCount(),"KY Ave","Red",120,150,18);
 	monopBoard.addToBoardArray(kentucky);
 	var chance3 = new Property(monopGame.incrementPropertyCount(),"Chance","","","");
 	monopBoard.addToBoardArray(chance3);
@@ -397,15 +588,15 @@ $(document).ready(function(){
 	monopBoard.addToBoardArray(indiana);
 	var illinois = new Property(monopGame.incrementPropertyCount(),"Illinois Ave","Red",120,150,20);
 	monopBoard.addToBoardArray(illinois);
-	var bo = new Property(monopGame.incrementPropertyCount(),"B&O Railroad","Railroad",200,25);
+	var bo = new Property(monopGame.incrementPropertyCount(),"B&O Rail","Railroad",200,25);
 	monopBoard.addToBoardArray(bo);
 	var atlantic = new Property(monopGame.incrementPropertyCount(),"Atlantic Ave","Yellow",260,150,22);
 	monopBoard.addToBoardArray(atlantic);
 	var ventnor = new Property(monopGame.incrementPropertyCount(),"Ventnor Ave","Yellow",260,150,22);
 	monopBoard.addToBoardArray(ventnor);
-	var waterWorks = new Property(monopGame.incrementPropertyCount(),"Water Works","Utility",150,"","Utility");
+	var waterWorks = new Property(monopGame.incrementPropertyCount(),"Water Work","Utility",150,"","Utility");
 	monopBoard.addToBoardArray(waterWorks);
-	var marvin = new Property(monopGame.incrementPropertyCount(),"Marvin Garden","Yellow",280,150,24);
+	var marvin = new Property(monopGame.incrementPropertyCount(),"Marvin Grd","Yellow",280,150,24);
 	monopBoard.addToBoardArray(marvin);
 	var goToJail = new Property(monopGame.incrementPropertyCount(),"Go To Jail","","","");
 	monopBoard.addToBoardArray(goToJail);
@@ -413,7 +604,7 @@ $(document).ready(function(){
 	monopBoard.addToBoardArray(pacific);
 	var nc = new Property(monopGame.incrementPropertyCount(),"N.C. Ave","Green",300,200,26);
 	monopBoard.addToBoardArray(nc);
-	var commChest3 = new Property(monopGame.incrementPropertyCount(),"Comm Chest","","","");
+	var commChest3 = new Property(monopGame.incrementPropertyCount(),"Com Chest","","","");
 	monopBoard.addToBoardArray(commChest3);
 	var pennsylvania = new Property(monopGame.incrementPropertyCount(),"Penn. Ave","Green",320,200,28);
 	monopBoard.addToBoardArray(pennsylvania);
@@ -428,9 +619,5 @@ $(document).ready(function(){
 	var boardwalk = new Property(monopGame.incrementPropertyCount(),"Board Walk","Blue",400,200,50);
 	monopBoard.addToBoardArray(boardwalk);
 	
-	monopBoard.createHTMLBoard(player1,player2);
-	monopBoard.updateHTMLDice(monopGame);
-	monopGame.currPlayerObj = player1;
-	monopGame.makeMove(monopBoard);
-	// monopGame.currPlayerObj.makeMove(monopBoard,monopGame);	
+	monopGame.startGame(monopBoard,player1);
 });

@@ -4,7 +4,7 @@ h1 {
 
 .property {
 	border: 1px solid black;
-	height: 60px;
+	height: 50px;
 	text-align: center;
 }
 
@@ -68,23 +68,23 @@ h1 {
 }
 
 .monopoly {
-	font-size: 40px;
+	font-size: 34px;
 	text-align: center;
 }
 
 .cards {
 	border: 2px dashed lightgrey;
-	height: 56px;
-	line-height: 56px;
+	height: 47px;
+	line-height: 47px;
 	text-align: center;
 	transform: rotate(-25deg);
 }
 
 .dice {
 	border: 2px dashed lightgrey;
-	height: 56px;
+	height: 47px;
 	text-align: center;
-	line-height: 56px;
+	line-height: 47px;
 	text-decoration: underline;
 	text-decoration-color: red;
 }
@@ -97,9 +97,37 @@ h1 {
 }
 
 #messageBoard {
+	border: 1px solid black;
+	padding-left: 3px;
+	padding-right: 3px;
+	height: 500px;
+	overflow-y: scroll;
+}
 
+.message {
+	margin-top: 3px;
 }
 
 .hide {
 	display: none;
+}
+
+.players {
+	height: 25px;
+}
+
+#commChest {
+	padding-top: -4px;
+	padding-bottom: -4px;
+}
+
+#nextPlayerTurn {
+	height: 50px;
+}
+
+.lineBreak {
+	font-weight: 900;
+	margin-top: 3px;
+	margin-bottom: 3px;
+	text-align: center;
 }
