@@ -24,7 +24,7 @@ $(document).ready(function(){
 		buyRailRoad: function() {
 			this.railRoadCount += 1;
 		},
-		buyProperty: function(property) {
+		buyProperty: function(property,htmlBoardObj) {
 			this.propertyCount += 1;
 			this.propertiesArray.push(property);
 			this.money -= property.price;
@@ -34,6 +34,7 @@ $(document).ready(function(){
 			} else if (property.monopolyGroup==="Utility") {
 				this.buyUtility();
 			}
+			htmlBoardObj.updateScoreboard();
 		},
 		buyUtility: function() {
 			this.utilityCount += 1;
@@ -60,11 +61,12 @@ $(document).ready(function(){
 			this.currBoardPosition = newPosition;
 			return newPosition;
 		},
-		payRent: function(rent,gamePlayObj) {
+		payRent: function(rent,gamePlayObj,htmlBoardObj) {
 			this.money -= rent;
 			gamePlayObj.otherPlayerObj.money += rent;
+			htmlBoardObj.updateScoreboard();
 		},
-		payIncomeTax: function() {
+		payIncomeTax: function(htmlBoardObj) {
 			var incomeTaxObj;
 			if(this.money * 0.10 > 200) {
 				incomeTaxObj = {
@@ -78,13 +80,16 @@ $(document).ready(function(){
 				};
 			}
 			this.money -= incomeTaxObj.amount;
+			htmlBoardObj.updateScoreboard();
 			return incomeTaxObj;
 		},
-		earnFromBank: function(amount) {
+		earnFromBank: function(amount,htmlBoardObj) {
 			this.money += amount;
+			htmlBoardObj.updateScoreboard();
 		},
-		payToBank: function(amount) {
+		payToBank: function(amount,htmlBoardObj) {
 			this.money -= amount;
+			htmlBoardObj.updateScoreboard();
 		},
 		startTurn: function(htmlBoardObj,gamePlayObj) {
 
@@ -98,6 +103,7 @@ $(document).ready(function(){
 				htmlBoardObj.addBankruptcyMessage();
 				$("#nextPlayerTurn").off("click");
 				$(".dice").off("click");
+				htmlBoardObj.updateScoreboard();
 			}
 		},
 	};
@@ -205,7 +211,7 @@ $(document).ready(function(){
 					this.currPlayerObj.getOutOfJailFreeCount -= 1;
 					this.currPlayerObj.inJail = false;
 				} else if(currPlayerObj.money >= 50) {
-					currPlayerObj.payToBank(50);
+					currPlayerObj.payToBank(50,htmlBoardObj);
 					htmlBoardObj.sprungJailMessage("paid",this);
 					this.currPlayerObj.inJail = false;
 				} else {
@@ -234,7 +240,7 @@ $(document).ready(function(){
 		},
 		gamePlayOnThisProperty: function(property,htmlBoardObj) {
 			if (property.title==="Go") {
-				this.currPlayerObj.earnFromBank(200);
+				this.currPlayerObj.earnFromBank(200,htmlBoardObj);
 				htmlBoardObj.addLandOnGoMessage(this);
 			} else if(property.ownedBy==="" && typeof property.price ==="number" && property.price>0 && property.price <= this.currPlayerObj.money) {
 				//unowned property, and curr player has enough money to buy it
@@ -260,7 +266,7 @@ $(document).ready(function(){
 				//you already own the property you landed on
 				htmlBoardObj.youAlreadyOwnThis();
 			} else if (property.monopolyGroup === "Income Tax") {
-				var utilityObj = this.currPlayerObj.payIncomeTax();
+				var utilityObj = this.currPlayerObj.payIncomeTax(htmlBoardObj);
 				htmlBoardObj.incomeTaxMessage(utilityObj,this);
 			} else if (property.title === "Com Chest") {
 				this.commChestHandler(this.communityChestArray[this.communityChestArrayCounter],htmlBoardObj);
@@ -297,10 +303,10 @@ $(document).ready(function(){
 				htmlBoardObj.goToJailMessage(commChestObj);
 			}
 			if(commChestObj.earnOrPay==="earn") {
-				this.currPlayerObj.earnFromBank(commChestObj.amount);
+				this.currPlayerObj.earnFromBank(commChestObj.amount,htmlBoardObj);
 				htmlBoardObj.commChestEarnMessage(commChestObj,this);
 			} else if (commChestObj.earnOrPay === "pay") {
-				this.currPlayerObj.payToBank(commChestObj.amount);
+				this.currPlayerObj.payToBank(commChestObj.amount,htmlBoardObj);
 				htmlBoardObj.commChestPayMessage(commChestObj,this);
 			}
 			this.incrementCommChestCounter();
@@ -310,6 +316,7 @@ $(document).ready(function(){
 			this.currPlayerObj = currPlayer;
 			var myGamePlayObj = this;
 			currPlayer.startTurn(htmlBoardObj,this);
+			htmlBoardObj.updateScoreboard();
 			$("#nextPlayerTurn").on("click",function(){
 				if(myGamePlayObj.currPlayerObj.hasRolled === false) {
 					htmlBoardObj.didntRollMessage(myGamePlayObj);
@@ -376,7 +383,7 @@ $(document).ready(function(){
 			htmlBoardObj.scrollToBottomMessages();
 			$("#yesButton").on("click",function(){
 				//check if they have a monopoly now
-				gamePlayObj.currPlayerObj.buyProperty(currProperty);
+				gamePlayObj.currPlayerObj.buyProperty(currProperty, htmlBoardObj);
 				currProperty.addOwner(gamePlayObj.currPlayerObj);
 				htmlBoardObj.addOwnerStyling(currProperty,gamePlayObj,this);
 				$("#messageBoard").append("<div class='message'>"+gamePlayObj.currPlayerObj.name+", congratulations! You have just bought "+currProperty.title+" for $"+currProperty.price+". You now own "+gamePlayObj.currPlayerObj.propertyCount+" properties. You have $"+gamePlayObj.currPlayerObj.money+" left</div>");
@@ -403,7 +410,7 @@ $(document).ready(function(){
 			this.scrollToBottomMessages();
 		},
 		addPayUtilityMessage: function(gamePlayObj,currProperty,rent) {
-			gamePlayObj.currPlayerObj.payRent(rent,gamePlayObj);
+			gamePlayObj.currPlayerObj.payRent(rent,gamePlayObj, this);
 			$("#messageBoard").append("<div class='message'>"+currProperty.title+" is currently owned by "+currProperty.ownedBy.name+", since it's a utility and they own "+gamePlayObj.otherPlayerObj.utilityCount+" utilities, you owe them rent of $"+rent+". You now have $"+gamePlayObj.currPlayerObj.money+" left, and "+gamePlayObj.otherPlayerObj.name+" has $"+gamePlayObj.otherPlayerObj.money+"</div>");
 			this.scrollToBottomMessages();
 		},
@@ -485,6 +492,12 @@ $(document).ready(function(){
 		},
 		addPlayerBreak: function() {
 			$("#messageBoard").append("<div class='message lineBreak'>----------------</div>");
+		},
+		updateScoreboard: function() {
+			$("#moneyp1").text(player1.name+": $"+player1.money);
+			$("#moneyp2").text(player2.name+": $"+player2.money);
+			$("#addlScoreInfo1").html("Properties Owned: "+player1.propertyCount+"<br/>"+"Get Out of Jail Frees: "+player1.getOutOfJailFreeCount)
+			$("#addlScoreInfo2").html("Properties Owned: "+player2.propertyCount+"<br/>"+"Get Out of Jail Frees: "+player2.getOutOfJailFreeCount);
 		}
 	};
 
