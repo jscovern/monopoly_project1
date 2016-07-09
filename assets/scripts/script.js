@@ -76,7 +76,7 @@ $(document).ready(function(){
 			} else {
 				incomeTaxObj = {
 					option: "10%",
-					amount: this.money * 0.10
+					amount: Math.floor(this.money * 0.10)
 				};
 			}
 			this.money -= incomeTaxObj.amount;
@@ -120,8 +120,22 @@ $(document).ready(function(){
 	}
 
 	Property.prototype = {
-		addOwner: function(currPlayerObj) {
+		addOwner: function(currPlayerObj, currProperty, gamePlayObj,htmlBoardObj) {
 			this.ownedBy = currPlayerObj;
+			var monopGroup = gamePlayObj.findMonopGroup(currProperty.monopolyGroup);
+			if(monopGroup !== undefined && monopGroup !=="Income Tax" && monopGroup !== "Railroad") {
+				monopGroup.incrementNumOwnedBy(currPlayerObj.playerID);		
+				console.log("monop group is "+monopGroup.monopolyGroup);
+				var currPlayer = monopGroup.checkForMonopoly(gamePlayObj);
+				console.log("currplayer is "+ currPlayer);	
+			} else {
+				var currPlayer = false;
+				console.log("currPlayer2 is "+currPlayer);
+			}
+			if(currPlayer) {
+				currPlayer.monopolyCount+=1;
+				htmlBoardObj.addMonopolyMessage(gamePlayObj);
+			}
 		},
 		updateRailRoadRent: function(numOwned) {
 			switch (numOwned) {
@@ -156,10 +170,33 @@ $(document).ready(function(){
 		this.monopolyGroup = group;
 		this.propertyCount = propertyCount;
 		this.housePrice = housePrice;
+		this.ownedBy = "";
+		this.numOwnedByP1 = 0;
+		this.numOwnedByP2 = 0;
 	}
 
 	MonopolyGroup.prototype = {
-
+		checkForMonopoly: function(gamePlayObj) {
+			console.log("player 1 owns "+this.numOwnedByP1+" and p2 owns "+this.numOwnedByP2+" for monop group "+this.monopolyGroup+" property count is "+this.propertyCount);
+			if(this.numOwnedByP1 === this.propertyCount) {
+				this.ownedBy = player1;
+				return player1;
+			} else if(this.numOwnedByP2 === this.propertyCount) {
+				this.ownedBy = player2;
+				return player2;
+			} else {
+				return false;
+			}
+		},
+		incrementNumOwnedBy: function (playerId) {
+			if(playerId === 1) {
+				this.numOwnedByP1++;
+				console.log("numOwnedByP1 "+this.numOwnedByP1);
+			} else {
+				this.numOwnedByP2++;
+				console.log("numOwnedByP2 "+this.numOwnedByP2);
+			}
+		}
 	};
 
 	function GamePlay() {
@@ -169,6 +206,7 @@ $(document).ready(function(){
 		this.otherPlayerObj = {};
 		this.communityChestArray = [];
 		this.communityChestArrayCounter = 0;
+		this.monopolyGroupArray = [];
 	}
 
 	GamePlay.prototype = {
@@ -182,8 +220,10 @@ $(document).ready(function(){
 		},
 		rollDice: function() {
 			var diceObj = {
-				die1Value: Math.ceil(Math.random()*6),
-				die2Value: Math.ceil(Math.random()*6),
+				die1Value: 1,
+				die2Value: 2,
+				//die1Value: Math.ceil(Math.random()*6),
+				//die2Value: Math.ceil(Math.random()*6),
 				die1Rotation: Math.ceil(Math.random()*360),
 				die2Rotation: Math.ceil(Math.random()*360),
 			};
@@ -327,6 +367,16 @@ $(document).ready(function(){
 				}
 			});
 		},
+		addMonopGroupsToArray: function(grp1,grp2,grp3,grp4,grp5,grp6,grp7,grp8) {
+			this.monopolyGroupArray.push(grp1,grp2,grp3,grp4,grp5,grp6,grp7,grp8);
+		},
+		findMonopGroup: function(group) {
+			for (var i=0; i<this.monopolyGroupArray.length; i++) {
+				if(this.monopolyGroupArray[i].monopolyGroup === group) {
+					return this.monopolyGroupArray[i];
+				}
+			}
+		},
 	};
 
 	function HTMLBoard() {
@@ -384,7 +434,7 @@ $(document).ready(function(){
 			$("#yesButton").on("click",function(){
 				//check if they have a monopoly now
 				gamePlayObj.currPlayerObj.buyProperty(currProperty, htmlBoardObj);
-				currProperty.addOwner(gamePlayObj.currPlayerObj);
+				currProperty.addOwner(gamePlayObj.currPlayerObj,currProperty,gamePlayObj,htmlBoardObj);
 				htmlBoardObj.addOwnerStyling(currProperty,gamePlayObj,this);
 				$("#messageBoard").append("<div class='message'>"+gamePlayObj.currPlayerObj.name+", congratulations! You have just bought "+currProperty.title+" for $"+currProperty.price+". You now own "+gamePlayObj.currPlayerObj.propertyCount+" properties. You have $"+gamePlayObj.currPlayerObj.money+" left</div>");
 				$(".yesNoButton").remove();
@@ -401,7 +451,7 @@ $(document).ready(function(){
 			this.scrollToBottomMessages();
 		},
 		addPayRentMessage: function(gamePlayObj,currProperty) {
-			gamePlayObj.currPlayerObj.payRent(currProperty.currentRent,gamePlayObj);
+			gamePlayObj.currPlayerObj.payRent(currProperty.currentRent,gamePlayObj,this);
 			$("#messageBoard").append("<div class='message'>"+currProperty.title+" is currently owned by "+currProperty.ownedBy.name+", you must pay them rent of $"+currProperty.currentRent+" since the property has "+currProperty.houseCount+" houses on it. You now have $"+gamePlayObj.currPlayerObj.money+" left, and "+gamePlayObj.otherPlayerObj.name+" has $"+gamePlayObj.otherPlayerObj.money+"</div>");
 			this.scrollToBottomMessages();
 		},
@@ -498,6 +548,9 @@ $(document).ready(function(){
 			$("#moneyp2").text(player2.name+": $"+player2.money);
 			$("#addlScoreInfo1").html("Properties Owned: "+player1.propertyCount+"<br/>"+"Get Out of Jail Frees: "+player1.getOutOfJailFreeCount)
 			$("#addlScoreInfo2").html("Properties Owned: "+player2.propertyCount+"<br/>"+"Get Out of Jail Frees: "+player2.getOutOfJailFreeCount);
+		},
+		addMonopolyMessage: function(gamePlayObj) {
+			$("#messageBoard").append("<div class='message monopolyGroupMessage'>"+gamePlayObj.currPlayerObj.name+" congratulations! You now have a monopoly! Your total monopoly count so far is: "+gamePlayObj.currPlayerObj.monopolyCount+"</div>");
 		}
 	};
 
@@ -548,6 +601,7 @@ $(document).ready(function(){
 	var monopGroupYellow = new MonopolyGroup("Yellow",3,150);
 	var monopGroupGreen = new MonopolyGroup("Green",3,200);
 	var monopGroupBlue = new MonopolyGroup("Blue",2,200);
+	monopGame.addMonopGroupsToArray(monopGroupPurple,monopGroupLightBlue,monopGroupMaroon,monopGroupOrange,monopGroupRed,monopGroupYellow,monopGroupGreen,monopGroupBlue);
 	//HTMLBoard
 	var monopBoard = new HTMLBoard();
 	//Properties
