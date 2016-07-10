@@ -1,3 +1,9 @@
+//I should create an array of monopolies on each Player.  Start it as a blank array, everytime someone gets a monopoly
+//it should push the monopoly group into the array.  Then I can loop through the arrays, to see who I should let know
+//in a message at the beginning of their turn that they can buy houses.  Then build in the functions to increase the
+//rent based on number of houses (do it with some king of function vs. the house price).  Update the HTML board and
+//show the number of houses owned in each house in a monopoly
+
 $(document).ready(function(){
 	function Player(playerNum, textColor, backgroundColor) {
 		this.name = "Player"+playerNum;
@@ -125,12 +131,9 @@ $(document).ready(function(){
 			var monopGroup = gamePlayObj.findMonopGroup(currProperty.monopolyGroup);
 			if(monopGroup !== undefined && monopGroup !=="Income Tax" && monopGroup !== "Railroad") {
 				monopGroup.incrementNumOwnedBy(currPlayerObj.playerID);		
-				console.log("monop group is "+monopGroup.monopolyGroup);
 				var currPlayer = monopGroup.checkForMonopoly(gamePlayObj);
-				console.log("currplayer is "+ currPlayer);	
 			} else {
 				var currPlayer = false;
-				console.log("currPlayer2 is "+currPlayer);
 			}
 			if(currPlayer) {
 				currPlayer.monopolyCount+=1;
@@ -177,7 +180,6 @@ $(document).ready(function(){
 
 	MonopolyGroup.prototype = {
 		checkForMonopoly: function(gamePlayObj) {
-			console.log("player 1 owns "+this.numOwnedByP1+" and p2 owns "+this.numOwnedByP2+" for monop group "+this.monopolyGroup+" property count is "+this.propertyCount);
 			if(this.numOwnedByP1 === this.propertyCount) {
 				this.ownedBy = player1;
 				return player1;
@@ -191,10 +193,8 @@ $(document).ready(function(){
 		incrementNumOwnedBy: function (playerId) {
 			if(playerId === 1) {
 				this.numOwnedByP1++;
-				console.log("numOwnedByP1 "+this.numOwnedByP1);
 			} else {
 				this.numOwnedByP2++;
-				console.log("numOwnedByP2 "+this.numOwnedByP2);
 			}
 		}
 	};
@@ -220,10 +220,8 @@ $(document).ready(function(){
 		},
 		rollDice: function() {
 			var diceObj = {
-				die1Value: 1,
-				die2Value: 2,
-				//die1Value: Math.ceil(Math.random()*6),
-				//die2Value: Math.ceil(Math.random()*6),
+				die1Value: Math.ceil(Math.random()*6),
+				die2Value: Math.ceil(Math.random()*6),
 				die1Rotation: Math.ceil(Math.random()*360),
 				die2Rotation: Math.ceil(Math.random()*360),
 			};
